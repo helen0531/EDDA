@@ -4,9 +4,9 @@
 
 {% block content %}
     <div class="card p-4 mx-auto" style="max-width: 1100px;">
-        <h3 class="mb-4">자기개발비 신청</h3>
+        <h3 class="mb-4">{{ '자기개발비 수정' if request_data else '자기개발비 신청' }}</h3>
 
-        <form action="/request/self-development" method="post" enctype="multipart/form-data">
+        <form action="{{ '/request/edit/self-development/' ~ request_data.id if request_data else '/request/self-development' }}" method="post" enctype="multipart/form-data">
             <div class="row g-4">
 
                 <div class="col-md-6">
@@ -15,25 +15,25 @@
                         <div class="mb-3">
                             <label class="form-label">수강항목 <span class="text-danger">*</span></label>
                             <div class="form-text mb-2">예시) 사업타당성 분석 실무과정</div>
-                            <input type="text" name="course_title" class="form-control">
+                            <input type="text" name="course_title" class="form-control" value="{{ request_data.content.course_title if request_data else '' }}" required>
                         </div>
 
                         <div class="mb-3">
                             <label class="form-label">목적 <span class="text-danger">*</span></label>
                             <div class="form-text mb-2">예시) - 분석 업무 역량 강화</div>
-                            <textarea name="purpose" class="form-control" rows="4"></textarea>
+                            <textarea name="purpose" class="form-control" rows="4" required>{{ request_data.content.purpose if request_data else '' }}</textarea>
                         </div>
 
                         <div class="mb-3">
                             <label class="form-label">수강내용 <span class="text-danger">*</span></label>
-                            <textarea name="course_content" class="form-control" rows="4"></textarea>
+                            <textarea name="course_content" class="form-control" rows="4" required>{{ request_data.content.course_content if request_data else '' }}</textarea>
                         </div>
 
                         <div class="mb-3">
                             <label class="form-label">수강비용 <span class="text-danger">*</span></label>
                             <div class="form-text mb-2">사용가능 금액: {{ "{:,.0f}".format(remaining_dev_cost) }}원</div>
                             <div class="form-text mb-2">예시) KRW 1,000,000 (일백만원정)</div>
-                            <input type="text" name="cost" class="form-control">
+                            <input type="text" name="cost" class="form-control" value="{{ request_data.content.cost if request_data else '' }}" required>
                         </div>
                     </div>
                 </div>
@@ -43,29 +43,37 @@
                         <div class="mb-3">
                             <label class="form-label">시작일자 <span class="text-danger">*</span></label>
                             <div class="form-text mb-2">하루 교육인 경우는 교육일자를, 기간인 경우 시작일자를 입력합니다.</div>
-                            <input type="date" name="start_date" class="form-control form-control-sm">
+                            <input type="date" name="start_date" class="form-control form-control-sm" value="{{ request_data.content.start_date if request_data else '' }}" required>
                         </div>
 
                         <div class="mb-3">
                             <label class="form-label">종료일자</label>
                             <div class="form-text mb-2">기간인 경우 교육 종료일자를 입력합니다.</div>
-                            <input type="date" name="end_date" class="form-control form-control-sm">
+                            <input type="date" name="end_date" class="form-control form-control-sm" value="{{ request_data.content.end_date if request_data else '' }}">
                         </div>
 
                         <div class="mb-3">
                             <label class="form-label">참고 사이트</label>
-                            <input type="text" name="reference_site" class="form-control">
+                            <input type="text" name="reference_site" class="form-control" value="{{ request_data.content.reference_site if request_data else '' }}">
                         </div>
 
                         <div class="mb-3">
                             <label for="formFile" class="form-label">증빙서류 첨부</label>
+                            {% if request_data and request_data.file_path %}
+                                <p>현재 파일: <a href="/download/{{ request_data.id }}" target="_blank">{{ request_data.file_path.split('/')[-1] }}</a></p>
+                            {% endif %}
                             <input class="form-control form-control-sm" type="file" id="formFile" name="file">
-                            <div class="form-text">필요 시 증빙서류(PDF, 이미지 등)를 첨부하세요.</div>
+                            <div class="form-text">필요 시 증빙서류(PDF, 이미지 등)를 첨부하세요. (새 파일 첨부 시 기존 파일은 대체됩니다)</div>
                         </div>
 
                         <div class="d-flex gap-2 mt-4">
                             <a href="/dashboard" class="btn btn-secondary">취소</a>
-                            <button type="submit" class="btn btn-dark">제출</button>
+                            {% if request_data %}
+                                <a href="/request/delete/{{ request_data.id }}" class="btn btn-danger" onclick="return confirm('정말로 삭제하시겠습니까?')">삭제</a>
+                                <button type="submit" class="btn btn-dark">수정 저장</button>
+                            {% else %}
+                                <button type="submit" class="btn btn-dark">제출</button>
+                            {% endif %}
                         </div>
                     </div>
                 </div>

@@ -490,7 +490,7 @@ def edit_request_form(request_id: int, request: Request, db: Session = Depends(g
         "시간외 근무": "overtime_form_edit.html",
         "대휴신청": "compensatory_leave_form.html",
         "출장": "business_trip_form_edit.html",
-        "자기개발비": "self_development_form_edit.html",
+        "자기개발비": "self_development_form.html",
     }
 
     template_name = template_map.get(request_data['type'])
@@ -504,6 +504,13 @@ def edit_request_form(request_id: int, request: Request, db: Session = Depends(g
             request_data['content']['work_hours_holiday'] = 0
         elif request_data['content'].get('work_hours_holiday') and int(request_data['content']['work_hours_holiday']) > 0:
             request_data['content']['work_type'] = '휴일근로'
+
+    if request_data['type'] == '자기개발비':
+        current_year = datetime.now().strftime('%Y')
+        used_dev_cost_result = db.execute(text("SELECT SUM(cost) FROM requests WHERE name = :name AND type = '자기개발비' AND strftime('%Y', created) = :year AND status = 'approved' AND id != :request_id"), {"name": current_user.name, "year": current_year, "request_id": request_id}).fetchone()
+        used_dev_cost = used_dev_cost_result[0] or 0
+        remaining_dev_cost = 2000000 - used_dev_cost
+        return templates.TemplateResponse(template_name, {"request": request, "request_data": request_data, "current_user": current_user, "remaining_dev_cost": remaining_dev_cost})
 
     print(request_data)
     return templates.TemplateResponse(template_name, {"request": request, "request_data": request_data, "current_user": current_user})
@@ -573,6 +580,91 @@ async def update_overtime_request(
     db.commit()
     return RedirectResponse(url="/dashboard", status_code=303)
 
+@router.post("/request/edit/self-development/{request_id}")
+def update_self_development_request(
+    request_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user, use_cache=False),
+    course_title: str = Form(...),
+    purpose: str = Form(...),
+    course_content: str = Form(...),
+    cost: str = Form(...),
+    start_date: str = Form(...),
+    end_date: str = Form(None),
+    reference_site: str = Form(None),
+    file: UploadFile = File(None)
+):
+    file_path = None
+    if file and file.filename:
+        file_path = save_upload_file(file, f"documents/{file.filename}")
+
+    content_data = {
+        "course_title": course_title,
+        "purpose": purpose,
+        "course_content": course_content,
+        "cost": cost,
+        "start_date": start_date,
+        "end_date": end_date,
+        "reference_site": reference_site
+    }
+
+    request_to_update = db.execute(text("SELECT status, file_path FROM requests WHERE id = :id"), {"id": request_id}).fetchone()
+
+    update_fields = {
+        "content": json.dumps(content_data, ensure_ascii=False),
+        "cost": int(cost),
+        "id": request_id,
+        "name": current_user.name
+    }
+    
+    set_clauses = "content = :content, cost = :cost"
+
+    if file_path:
+        update_fields["file_path"] = file_path
+        set_clauses += ", file_path = :file_path"
+
+    if request_to_update and request_to_update[0] == 'rejected':
+        update_fields["status"] = '재신청'
+        set_clauses += ", status = :status"
+
+    db.execute(text(f"UPDATE requests SET {set_clauses} WHERE id = :id AND name = :name"), update_fields)
+    db.commit()
+    return RedirectResponse(url="/dashboard", status_code=303)
+
+
+def update_compensatory_leave_request(
+    request_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user, use_cache=False),
+    leave_date: date = Form(...),
+    hours: int = Form(...),
+    reason: str = Form(...)
+):
+    content_data = {
+        "leave_date": str(leave_date),
+        "hours": hours,
+        "reason": reason
+    }
+
+    request_to_update = db.execute(text("SELECT status FROM requests WHERE id = :id"), {"id": request_id}).fetchone()
+
+    update_fields = {
+        "content": json.dumps(content_data, ensure_ascii=False),
+        "id": request_id,
+        "name": current_user.name
+    }
+
+    if request_to_update and request_to_update[0] == 'rejected':
+        update_fields["status"] = '재신청'
+        db.execute(text("UPDATE requests SET content = :content, status = :status WHERE id = :id AND name = :name"), update_fields)
+    else:
+        db.execute(text("UPDATE requests SET content = :content WHERE id = :id AND name = :name"), update_fields)
+
+    db.commit()
+    return RedirectResponse(url="/dashboard", status_code=303)
+
+
+@router.post("/request/edit/business-trip/{request_id}")
 @router.post("/request/edit/business-trip/{request_id}")
 def update_business_trip_request(
     request_id: int,
@@ -614,5 +706,86 @@ def update_business_trip_request(
 
     db.commit()
     return RedirectResponse(url="/dashboard", status_code=303)
+
+@router.post("/request/edit/compensatory-leave/{request_id}")
+def update_compensatory_leave_request(
+    request_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user, use_cache=False),
+    leave_date: date = Form(...),
+    hours: int = Form(...),
+    reason: str = Form(...)
+):
+    content_data = {
+        "leave_date": str(leave_date),
+        "hours": hours,
+        "reason": reason
+    }
+
+    request_to_update = db.execute(text("SELECT status FROM requests WHERE id = :id"), {"id": request_id}).fetchone()
+
+    update_fields = {
+        "content": json.dumps(content_data, ensure_ascii=False),
+        "id": request_id,
+        "name": current_user.name
+    }
+
+    if request_to_update and request_to_update[0] == 'rejected':
+        update_fields["status"] = '재신청'
+        db.execute(text("UPDATE requests SET content = :content, status = :status WHERE id = :id AND name = :name"), update_fields)
+    else:
+        db.execute(text("UPDATE requests SET content = :content WHERE id = :id AND name = :name"), update_fields)
+
+    db.commit()
+    return RedirectResponse(url="/dashboard", status_code=303)
+
+@router.post("/request/edit/self-development/{request_id}")
+def update_self_development_request(
+    request_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user, use_cache=False),
+    course_title: str = Form(...),
+    purpose: str = Form(...),
+    course_content: str = Form(...),
+    cost: str = Form(...),
+    start_date: str = Form(...),
+    end_date: str = Form(None),
+    reference_site: str = Form(None),
+    file: UploadFile = File(None)
+):
+    request_to_update = db.execute(text("SELECT status, file_path FROM requests WHERE id = :id"), {"id": request_id}).fetchone()
+    
+    file_path = request_to_update[1] if request_to_update else None
+    if file and file.filename:
+        file_path = save_upload_file(file, f"documents/{file.filename}")
+
+    content_data = {
+        "course_title": course_title,
+        "purpose": purpose,
+        "course_content": course_content,
+        "cost": cost,
+        "start_date": start_date,
+        "end_date": end_date,
+        "reference_site": reference_site
+    }
+
+    update_fields = {
+        "content": json.dumps(content_data, ensure_ascii=False),
+        "cost": int(cost),
+        "id": request_id,
+        "name": current_user.name,
+        "file_path": file_path
+    }
+    
+    set_clauses = "content = :content, cost = :cost, file_path = :file_path"
+
+    if request_to_update and request_to_update[0] == 'rejected':
+        update_fields["status"] = '재신청'
+        set_clauses += ", status = :status"
+
+    db.execute(text(f"UPDATE requests SET {set_clauses} WHERE id = :id AND name = :name"), update_fields)
+    db.commit()
+    return RedirectResponse(url="/dashboard", status_code=303)
+
 
 

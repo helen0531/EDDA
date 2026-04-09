@@ -6,7 +6,7 @@
     <div class="card p-4 mx-auto" style="max-width: 600px;">
         <h3 class="mb-4">대휴 신청</h3>
         <div class="alert alert-light-yellow">남은 대휴 시간: {{ remaining_hours }}시간</div>
-        <form action="/request/compensatory-leave" method="post" enctype="multipart/form-data">
+        <form action="{{ '/request/edit/compensatory-leave/' ~ request_data.id if request_data else '/request/compensatory-leave' }}" method="post" enctype="multipart/form-data">
             <div class="mb-3">
                 <label for="leave_date" class="form-label">대휴 사용일</label>
                 <input type="date" id="leave_date" name="leave_date" class="form-control form-control-sm" value="{{ request_data.content.leave_date if request_data else '' }}" required>
