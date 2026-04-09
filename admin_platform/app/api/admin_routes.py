@@ -389,7 +389,7 @@ def export_to_excel(
     ws.merge_cells('A1:K1')
     title_cell = ws.cell(row=1, column=1, value=f"{title_date} 시간외 및 휴일근무 내역")
     title_cell.alignment = Alignment(horizontal='center', vertical='center')
-    title_cell.font = Font(name='Malgun Gothic', size=18, bold=True, color='FF000000')
+    title_cell.font = Font(name='Malgun Gothic', size=18, bold=True, color='FFFF0000')
     
     # Set row height for title row
     ws.row_dimensions[1].height = 36.75
