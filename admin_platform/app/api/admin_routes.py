@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Request, Depends, Query, HTTPException, Form
-from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse
+from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from datetime import datetime, timedelta
 from dateutil.relativedelta import relativedelta
@@ -635,5 +635,21 @@ def download_pdf_route(request_id: int, db: Session = Depends(get_db), current_u
     if not request_owner or (current_user.name != request_owner and current_user.role not in ["admin", "manager", "lead"]):
         raise HTTPException(status_code=403, detail="이 PDF에 접근할 권한이 없습니다.")
 
-    pdf_content = download_pdf(request_id, db, current_user)
-    return HTMLResponse(content=pdf_content, media_type="application/pdf")
+
+@router.get("/reject/cancel/{request_id}")
+def cancel_rejection(request_id: int, db: Session = Depends(get_db), current_user: User = Depends(require_role(["admin", "manager"]))):
+    # Get the original approver to set the status back
+    request_info = db.execute(text("SELECT approver FROM requests WHERE id = :id"), {"id": request_id}).fetchone()
+    if not request_info:
+        raise HTTPException(status_code=404, detail="Request not found")
+
+    # The status should revert to waiting for the original approver
+    previous_status = f"{request_info[0]} 승인 대기"
+
+    db.execute(text("UPDATE requests SET status = :status, reject_reason = NULL WHERE id = :id"), {
+        "status": previous_status,
+        "id": request_id
+    })
+    db.commit()
+    return RedirectResponse(url="/approve-list", status_code=303)
+

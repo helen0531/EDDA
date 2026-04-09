@@ -450,7 +450,8 @@ def reject_form(request: Request, id: int, current_user: User = Depends(require_
 
 @router.post("/reject")
 def reject_submit(id: int = Form(...), reason: str = Form(...), db: Session = Depends(get_db), current_user: User = Depends(require_role(["admin", "manager", "lead"]))):
-    # (Rejection logic)
+    db.execute(text("UPDATE requests SET status = 'rejected', reject_reason = :reason WHERE id = :id"), {"reason": reason, "id": id})
+    db.commit()
     return RedirectResponse(url="/approve-list", status_code=303)
 
 @router.get("/request/delete/{request_id}")
@@ -555,11 +556,20 @@ async def update_overtime_request(
         "calculated_compensatory_hours": calculated_compensatory_hours
     }
 
-    db.execute(text("UPDATE requests SET content = :content WHERE id = :id AND name = :name"), {
+    request_to_update = db.execute(text("SELECT status FROM requests WHERE id = :id"), {"id": request_id}).fetchone()
+
+    update_fields = {
         "content": json.dumps(content_data, ensure_ascii=False),
         "id": request_id,
         "name": current_user.name
-    })
+    }
+
+    if request_to_update and request_to_update[0] == 'rejected':
+        update_fields["status"] = '재신청'
+        db.execute(text("UPDATE requests SET content = :content, status = :status WHERE id = :id AND name = :name"), update_fields)
+    else:
+        db.execute(text("UPDATE requests SET content = :content WHERE id = :id AND name = :name"), update_fields)
+
     db.commit()
     return RedirectResponse(url="/dashboard", status_code=303)
 
@@ -588,11 +598,20 @@ def update_business_trip_request(
         "transport": transport
     }
 
-    db.execute(text("UPDATE requests SET content = :content WHERE id = :id AND name = :name"), {
+    request_to_update = db.execute(text("SELECT status FROM requests WHERE id = :id"), {"id": request_id}).fetchone()
+
+    update_fields = {
         "content": json.dumps(content_data, ensure_ascii=False),
         "id": request_id,
         "name": current_user.name
-    })
+    }
+
+    if request_to_update and request_to_update[0] == 'rejected':
+        update_fields["status"] = '재신청'
+        db.execute(text("UPDATE requests SET content = :content, status = :status WHERE id = :id AND name = :name"), update_fields)
+    else:
+        db.execute(text("UPDATE requests SET content = :content WHERE id = :id AND name = :name"), update_fields)
+
     db.commit()
     return RedirectResponse(url="/dashboard", status_code=303)
 

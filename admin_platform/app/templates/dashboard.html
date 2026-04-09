@@ -97,16 +97,14 @@
                             {% endif %}
                         </td>
                         <td class="small">
-                            {% if r.type == '대휴신청' or r.type == '대휴 사용' %}
-                                {% if r.status == "approved" %}
-                                    -
-                                {% elif '승인 대기' in r.status %}
-                                    <a href="/request/edit/{{ r.id }}" class="btn btn-sm btn-outline-primary" style="color: #198754;">수정</a>
-                                {% endif %}
+                            {% if '승인 대기' in r.status or r.status == '재신청' %}
+                                <a href="/request/edit/{{ r.id }}" class="btn btn-sm btn-outline-primary" style="color: #198754;">수정</a>
                             {% elif r.status == "approved" %}
                                 <a href="/admin-dashboard/pdf/{{ r.id }}" class="btn btn-sm btn-pdf">PDF</a>
-                            {% elif '승인 대기' in r.status %}
-                                <a href="/request/edit/{{ r.id }}" class="btn btn-sm btn-outline-primary" style="color: #198754;">수정</a>
+                            {% elif r.status == "rejected" %}
+                                <button type="button" class="btn btn-sm btn-danger" data-bs-toggle="modal" data-bs-target="#rejectionModal" data-reason="{{ r.reject_reason }}" data-edit-url="/request/edit/{{ r.id }}">
+                                    반려
+                                </button>
                             {% endif %}
                         </td>
                     </tr>
@@ -143,4 +141,38 @@
             </ul>
         </nav>
     </div>
+
+    <!-- Rejection Modal -->
+    <div class="modal fade" id="rejectionModal" tabindex="-1" aria-labelledby="rejectionModalLabel" aria-hidden="true">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" id="rejectionModalLabel">반려 사유</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body">
+            <p id="rejectionReasonText"></p>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">닫기</button>
+            <a href="#" id="editRequestBtn" class="btn btn-primary">수정</a>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      var rejectionModal = document.getElementById('rejectionModal')
+      rejectionModal.addEventListener('show.bs.modal', function (event) {
+        var button = event.relatedTarget
+        var reason = button.getAttribute('data-reason')
+        var editUrl = button.getAttribute('data-edit-url')
+
+        var modalReasonText = rejectionModal.querySelector('#rejectionReasonText')
+        var editRequestBtn = rejectionModal.querySelector('#editRequestBtn')
+
+        modalReasonText.textContent = reason
+        editRequestBtn.setAttribute('href', editUrl)
+      })
+    </script>
 {% endblock %}
