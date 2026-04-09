@@ -4,7 +4,7 @@
 
 {% block content %}
     <div class="card p-4 mx-auto" style="max-width: 600px;">
-        <h3 class="mb-4">시간외 근무 한도 설정</h3>
+        <h3 class="mb-4">시간외 근무 및 문서 설정</h3>
         {% if message %}
             <div class="alert alert-success">{{ message }}</div>
         {% endif %}
@@ -27,6 +27,19 @@
                     </div>
                 </div>
             </div>
+            <hr class="my-4">
+            <h3 class="mb-4">문서 승인자 설정</h3>
+            <div class="mb-3">
+                <label for="pdf_approver" class="form-label">문서 승인자</label>
+                <select id="pdf_approver" name="pdf_approver" class="form-select">
+                    <option value="">-- 승인자 선택 --</option>
+                    {% for employee in employees %}
+                        <option value="{{ employee.name }}" {% if employee.name == pdf_approver %}selected{% endif %}>{{ employee.name }}</option>
+                    {% endfor %}
+                </select>
+                <small class="text-muted">여기서 선택된 승인자가 모든 PDF 문서에 기본으로 표시됩니다. 지정하지 않으면 요청의 최종 승인자가 표시됩니다.</small>
+            </div>
+
             <button type="submit" class="btn btn-primary">저장</button>
         </form>
     </div>

@@ -40,8 +40,26 @@ def employee_edit_form(request: Request, id: int, db: Session = Depends(get_db),
     return templates.TemplateResponse("employee_edit.html", {"request": request, "employee": employee, "current_user": current_user})
 
 @router.post("/employee/edit")
-def handle_employee_edit(id: int = Form(...), name: str = Form(...), emp_no: str = Form(...), dept: str = Form(...), position: str = Form(...), work_type: str = Form(...), role: str = Form(...), email: str = Form(...), db: Session = Depends(get_db), current_user: User = Depends(require_role(["admin", "lead"]))):
-    db.execute(text("UPDATE employees SET name = :name, emp_no = :emp_no, dept = :dept, position = :position, work_type = :work_type, role = :role, email = :email WHERE id = :id"), {"name": name, "emp_no": emp_no, "dept": dept, "position": position, "work_type": work_type, "role": role, "email": email, "id": id})
+def handle_employee_edit(id: int = Form(...), name: str = Form(...), emp_no: str = Form(...), dept: str = Form(...), position: str = Form(...), work_type: str = Form(...), role: str = Form(...), email: str = Form(...), signature: UploadFile = File(None), db: Session = Depends(get_db), current_user: User = Depends(require_role(["admin", "lead"]))):
+    update_fields = {
+        "id": id,
+        "name": name,
+        "emp_no": emp_no,
+        "dept": dept,
+        "position": position,
+        "work_type": work_type,
+        "role": role,
+        "email": email
+    }
+    
+    set_clauses = "name = :name, emp_no = :emp_no, dept = :dept, position = :position, work_type = :work_type, role = :role, email = :email"
+
+    if signature and signature.filename:
+        signature_data = signature.file.read()
+        update_fields['signature'] = signature_data
+        set_clauses += ", signature = :signature"
+
+    db.execute(text(f"UPDATE employees SET {set_clauses} WHERE id = :id"), update_fields)
     db.commit()
     return RedirectResponse(url="/employee/list", status_code=303)
 

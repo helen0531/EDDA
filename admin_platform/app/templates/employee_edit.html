@@ -12,7 +12,7 @@
         <div class="card p-4 mx-auto" style="max-width: 700px;">
             <h3 class="mb-4">직원 정보 수정</h3>
 
-            <form action="/employee/edit" method="post">
+            <form action="/employee/edit" method="post" enctype="multipart/form-data">
                 <input type="hidden" name="id" value="{{ employee[0] }}">
 
                 <div class="mb-3">
@@ -56,6 +56,14 @@
                 <div class="mb-3">
                     <label class="form-label">이메일</label>
                     <input name="email" class="form-control" value="{{ employee[7] }}">
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">서명</label>
+                    {% if employee[8] %}
+                        <img src="data:image/png;base64,{{ employee[8] }}" alt="signature" width="150" class="d-block mb-2">
+                    {% endif %}
+                    <input type="file" name="signature" class="form-control">
                 </div>
 
                 <div class="d-flex gap-2">
